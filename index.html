@@ -1,0 +1,45 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Color Picker Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #canvas { border: 1px solid #000; margin-top: 10px; cursor: crosshair; }
+        #color-info { margin-top: 20px; font-size: 18px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Color Detection Tool</h1>
+    <p>Upload an image and click anywhere to get the color at that pixel.</p>
+    <input type="file" id="upload" accept="image/*" />
+    <br />
+    <canvas id="canvas"></canvas>
+    <div id="color-info">Color info will appear here</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        document.getElementById('upload').addEventListener('change', function(e) {
+            const img = new Image();
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = URL.createObjectURL(e.target.files[0]);
+        });
+
+        canvas.addEventListener('click', function(e) {
+            const x = e.offsetX;
+            const y = e.offsetY;
+            const data = ctx.getImageData(x, y, 1, 1).data;
+            const rgb = `RGB(${data[0]}, ${data[1]}, ${data[2]})`;
+            const hex = "#" + ((1 << 24) + (data[0] << 16) + (data[1] << 8) + data[2]).toString(16).slice(1).toUpperCase();
+            document.getElementById('color-info').innerText = `${rgb} | ${hex}`;
+        });
+    </script>
+</body>
+</html>
