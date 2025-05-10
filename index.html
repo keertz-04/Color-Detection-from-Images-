@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Color Picker Tool (Offline)</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #canvas { border: 1px solid #000; margin-top: 10px; cursor: crosshair; }
+        #color-info { margin-top: 20px; font-size: 18px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Color Detection Tool</h1>
+    <p>Upload an image and click anywhere to get the color name, RGB, and Hex value.</p>
+    <input type="file" id="upload" accept="image/*" />
+    <br />
+    <canvas id="canvas"></canvas>
+    <div id="color-info">Color info will appear here</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const cssColorNames = {
+            "Black": "#000000", "White": "#FFFFFF", "Red": "#FF0000", "Lime": "#00FF00", "Blue": "#0000FF",
+            "Yellow": "#FFFF00", "Cyan": "#00FFFF", "Magenta": "#FF00FF", "Silver": "#C0C0C0", "Gray": "#808080",
+            "Maroon": "#800000", "Olive": "#808000", "Green": "#008000", "Purple": "#800080", "Teal": "#008080",
+            "Navy": "#000080", "Orange": "#FFA500", "Pink": "#FFC0CB", "Brown": "#A52A2A", "Gold": "#FFD700",
+            "SkyBlue": "#87CEEB", "DarkGreen": "#006400", "DarkRed": "#8B0000", "Beige": "#F5F5DC"
+        };
+
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return [r, g, b];
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x =>
+                x.toString(16).padStart(2, '0')
+            ).join('').toUpperCase();
+        }
+
+        function colorDistance(c1, c2) {
+            return Math.pow(c1[0] - c2[0], 2) + Math.pow(c1[1] - c2[1], 2) + Math.pow(c1[2] - c2[2], 2);
+        }
+
+        function findClosestColorName(r, g, b) {
+            let closest = "Unknown";
+            let minDist = Infinity;
+            for (const name in cssColorNames) {
+                const [cr, cg, cb] = hexToRgb(cssColorNames[name]);
+                const dist = colorDistance([r, g, b], [cr, cg, cb]);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = name;
+                }
+            }
+            return closest;
+        }
+
+        document.getElementById('upload').addEventListener('change', function(e) {
+            const img = new Image();
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = URL.createObjectURL(e.target.files[0]);
+        });
+
+        canvas.addEventListener('click', function(e) {
+            const x = e.offsetX;
+            const y = e.offsetY;
+            const data = ctx.getImageData(x, y, 1, 1).data;
+            const rgb = `RGB(${data[0]}, ${data[1]}, ${data[2]})`;
+            const hex = rgbToHex(data[0], data[1], data[2]);
+            const name = findClosestColorName(data[0], data[1], data[2]);
+            document.getElementById('color-info').innerText = `${name} | ${rgb} | ${hex}`;
+        });
+    </script>
+</body>
+</html>
