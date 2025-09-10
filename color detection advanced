@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Color Picker Tool</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #upload-area {
+            border: 2px dashed #aaa;
+            padding: 30px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        #upload-area:hover {
+            border-color: #333;
+        }
+
+        #canvas {
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #333;
+            cursor: crosshair;
+            max-width: 100%;
+        }
+
+        #color-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #color-preview {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #000;
+            margin-right: 10px;
+        }
+
+        .copyable {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .copyable:hover {
+            color: darkblue;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced Color Picker Tool</h1>
+    <p>Upload or drop an image, click to find the closest named color, RGB & Hex!</p>
+
+    <label id="upload-area">
+        Click or Drag Image Here
+        <input type="file" id="upload" accept="image/*" style="display: none;">
+    </label>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="color-display">
+        <div id="color-preview"></div>
+        <div id="color-info">No color selected</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const uploadInput = document.getElementById('upload');
+        const colorInfo = document.getElementById('color-info');
+        const colorPreview = document.getElementById('color-preview');
+        const uploadArea = document.getElementById('upload-area');
+
+        const cssColorNames = {
+            "Black": "#000000", "White": "#FFFFFF", "Red": "#FF0000", "Lime": "#00FF00", "Blue": "#0000FF",
+            "Yellow": "#FFFF00", "Cyan": "#00FFFF", "Magenta": "#FF00FF", "Silver": "#C0C0C0", "Gray": "#808080",
+            "Maroon": "#800000", "Olive": "#808000", "Green": "#008000", "Purple": "#800080", "Teal": "#008080",
+            "Navy": "#000080", "Orange": "#FFA500", "Pink": "#FFC0CB", "Brown": "#A52A2A", "Gold": "#FFD700",
+            "SkyBlue": "#87CEEB", "DarkGreen": "#006400", "DarkRed": "#8B0000", "Beige": "#F5F5DC"
+        };
+
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+        }
+
+        function colorDistance(c1, c2) {
+            return c1.reduce((acc, val, i) => acc + Math.pow(val - c2[i], 2), 0);
+        }
+
+        function findClosestColorName(r, g, b) {
+            let closest = "Unknown";
+            let minDist = Infinity;
+            for (const name in cssColorNames) {
+                const rgb = hexToRgb(cssColorNames[name]);
+                const dist = colorDistance([r, g, b], rgb);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = name;
+                }
+            }
+            return closest;
+        }
+
+        function displayColor(r, g, b) {
+            const hex = rgbToHex(r, g, b);
+            const name = findClosestColorName(r, g, b);
+            colorPreview.style.backgroundColor = hex;
+            colorInfo.innerHTML = `
+                <span>${name}</span> |
+                <span class="copyable" onclick="navigator.clipboard.writeText('RGB(${r}, ${g}, ${b})')">RGB(${r}, ${g}, ${b})</span> |
+                <span class="copyable" onclick="navigator.clipboard.writeText('${hex}')">${hex}</span>
+            `;
+        }
+
+        function handleImage(file) {
+            const img = new Image();
+            img.onload = function () {
+                const maxWidth = 800;
+                const maxHeight = 600;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth || height > maxHeight) {
+                    const scale = Math.min(maxWidth / width, maxHeight / height);
+                    width *= scale;
+                    height *= scale;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        uploadInput.addEventListener('change', e => {
+            if (e.target.files.length) {
+                handleImage(e.target.files[0]);
+            }
+        });
+
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
+            displayColor(r, g, b);
+        });
+
+        // Drag and drop support
+        uploadArea.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#333';
+        });
+
+        uploadArea.addEventListener('dragleave', e => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#aaa';
+        });
+
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#aaa';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImage(file);
+            }
+        });
+
+        // Click label to open file picker
+        uploadArea.addEventListener('click', () => {
+            uploadInput.click();
+        });
+    </script>
+</body>
+</html>
